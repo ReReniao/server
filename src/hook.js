@@ -720,7 +720,12 @@ const tryMatch = (ctx) => {
 	/** @type {Promise<any>[]} */
 	let tasks;
 	let target = 0;
-
+	
+	// 用于记录匹配结果
+    let matchedSource = null;
+    let matchedUrl = null;
+    let matchedBr = null;
+	
 	const inject = (item) => {
 		item.flag = 0;
 		
@@ -733,6 +738,10 @@ const tryMatch = (ctx) => {
            	 item.url = item.url.replace(/(m\d+?)(?!c)\.music\.126\.net/, '$1c.music.126.net');
      	   }
        	 item.freeTrialInfo = null;
+			 // ===== 记录官方音源匹配信息 =====
+			matchedSource = 'netease (official)';
+            matchedUrl = item.url;
+            matchedBr = item.br;
      	   return Promise.resolve(); // 使用网易云音源
  	   }
 
@@ -780,6 +789,12 @@ const tryMatch = (ctx) => {
 					item.size = song.size;
 					item.code = 200;
 					item.freeTrialInfo = null;
+
+					 // ===== 记录第三方音源匹配信息 =====
+                    matchedSource = song.source || 'unknown';
+                    matchedUrl = item.url;
+                    matchedBr = item.br;
+					
 					return song;
 				})
 				.then((song) => {
@@ -859,7 +874,22 @@ const tryMatch = (ctx) => {
 				); // reduce time cost
 		tasks = jsonBody.data.map((item) => inject(item));
 	}
-	return Promise.all(tasks).catch((e) => e && logger.error(e));
+	return Promise.all(tasks)
+        .then(() => {
+            // ===== 新增：输出 INFO 级别匹配结果 =====
+            if (matchedSource && matchedUrl) {
+                logger.info({
+                    source: matchedSource,
+                    url: matchedUrl,
+                    br: matchedBr,
+                    songId: ctx.netease?.param?.id || 'unknown'
+                }, `✅ 音源匹配成功: ${matchedSource} (${matchedBr ? matchedBr/1000 + 'kbps' : 'unknown'})`);
+            } else {
+                logger.warn('⚠️ 音源匹配失败，未找到可用音源');
+            }
+            return;
+        })
+        .catch((e) => e && logger.error(e));
 };
 
 const unblockSoundEffects = (obj) => {
