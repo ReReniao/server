@@ -32,13 +32,21 @@ jobs:
               with:
                   node-version: 20
                   cache: yarn
+              env:
+                  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
             - name: Install dependencies
               run: yarn
 
             - name: Build the precompiled package
               run: yarn build
-
+            - name: List build output
+              run: |
+                 echo "Contents of dist directory:"
+                 ls -la dist/ || echo "dist directory does not exist"
+                 echo "Contents of precompiled directory:"
+                 ls -la precompiled/ || echo "precompiled directory does not exist"
+                 
             - name: Upload app.js
               uses: actions/upload-artifact@v4
               with:
