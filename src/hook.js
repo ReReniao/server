@@ -116,6 +116,28 @@ const domainList = [
 	'interface3.music.163.com',
 ];
 
+// ===== 新增：启动时检查 NETEASE_COOKIE 环境变量 =====
+const NET_COOKIE = process.env.NETEASE_COOKIE || '';
+if (NET_COOKIE) {
+    // 提取 MUSIC_U 的前几位用于确认
+    const musicUMatch = NET_COOKIE.match(/MUSIC_U=([^;]+)/);
+    const csrfMatch = NET_COOKIE.match(/__csrf=([^;]+)/);
+    const musicUPreview = musicUMatch ? musicUMatch[1].substring(0, 10) + '...' : '未找到';
+    const csrfPreview = csrfMatch ? csrfMatch[1].substring(0, 10) + '...' : '未找到';
+    
+    logger.info(`=== NETEASE_COOKIE 环境变量状态 ===`);
+    logger.info(`✅ Cookie 已设置 (长度: ${NET_COOKIE.length} 字符)`);
+    logger.info(`   MUSIC_U: ${musicUPreview}`);
+    logger.info(`   __csrf: ${csrfPreview}`);
+    logger.info(`   完整 Cookie 前 100 字符: ${NET_COOKIE.substring(0, 100)}...`);
+    logger.info(`====================================`);
+} else {
+    logger.warn(`⚠️ NETEASE_COOKIE 环境变量未设置！`);
+    logger.warn(`   将无法使用官方音源，可能回退到第三方源。`);
+    logger.warn(`   请设置: export NETEASE_COOKIE="MUSIC_U=xxx; __csrf=xxx"`);
+}
+// ===== 新增结束 =====
+
 hook.request.before = (ctx) => {
 	const { req } = ctx;
 	req.url =
@@ -137,6 +159,10 @@ hook.request.before = (ctx) => {
 		ctx.decision = 'proxy';
 
 	if (process.env.NETEASE_COOKIE && url.path.includes('url')) {
+		// ---- 增加：打印替换前的状态 ----
+    	logger.debug(`Original Cookie: ${req.headers.cookie || 'No Cookie'}`);
+    	logger.debug(`NETEASE_COOKIE from env: ${process.env.NETEASE_COOKIE}`);
+		
 		var cookies = cookieToMap(req.headers.cookie);
 		var new_cookies = cookieToMap(process.env.NETEASE_COOKIE);
 
@@ -145,7 +171,11 @@ hook.request.before = (ctx) => {
 		});
 
 		req.headers.cookie = mapToCookie(cookies);
+		
 		logger.debug('Replace netease cookie');
+		// ---- 增加：打印替换后的状态 ----
+    	logger.debug(`Replaced Cookie (first 100 chars): ${req.headers.cookie.substring(0, 100)}...`);
+    	logger.debug('Replace netease cookie');
 	}
 
 	if (
