@@ -723,23 +723,20 @@ const tryMatch = (ctx) => {
 
 	const inject = (item) => {
 		item.flag = 0;
-
-		// ===== 新增：优先使用网易云官方音源 =====
-		// 如果官方已返回有效的音源URL，直接使用，不调用第三方
-		if (item.code === 200 && item.url && typeof item.url === 'string' && item.url.startsWith('http')) {
-			// 官方已有音源，直接保留
-			if (netease.web) {
-				item.url = item.url.replace(/(m\d+?)(?!c)\.music\.126\.net/, '$1c.music.126.net');
-			}
-			// 清除免费试用标记（因为已经有实际可用的URL了）
-			if (item.freeTrialInfo) {
-				item.freeTrialInfo = null;
-			}
-			// 直接返回，不执行后续的第三方音源匹配
-			return Promise.resolve();
-		}
-		// ===== 新增结束 =====
 		
+			// ===== 从环境变量读取 Cookie =====
+    	const hasCookie = process.env.NETEASE_COOKIE && process.env.NETEASE_COOKIE.length > 0;
+
+   		 if (hasCookie && item.code === 200 && item.url && typeof item.url === 'string' && item.url.startsWith('http')) {
+       		// 有 Cookie：直接使用网易云音源，不做任何检测
+       	 if (netease.web) {
+           	 item.url = item.url.replace(/(m\d+?)(?!c)\.music\.126\.net/, '$1c.music.126.net');
+     	   }
+       	 item.freeTrialInfo = null;
+     	   return Promise.resolve(); // 使用网易云音源
+ 	   }
+
+  		 	// 没有 Cookie 或官方没有返回 URL：走第三方音源
 		if (
 			(item.code !== 200 || item.freeTrialInfo || item.br < min_br) &&
 			(target === 0 || item.id === target)
