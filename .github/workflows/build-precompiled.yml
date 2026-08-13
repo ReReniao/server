@@ -51,4 +51,4 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                 name: precompiled-app
-                path: dist/app.js
+                path: precompiled/app.js
